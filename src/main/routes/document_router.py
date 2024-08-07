@@ -1,8 +1,8 @@
 from typing import List
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from langchain_core.documents.base import Document
 from pydantic import BaseModel
-from src.main.persistence.milvus import vector_store
+from src.main.services.document_service import DocumentService
 
 
 class DocReq(BaseModel):
@@ -16,12 +16,14 @@ class DocRes(BaseModel):
     metadata: dict[str, str | int]
 
 
-vectorStoreRouter = APIRouter()
+documentRouter = APIRouter()
 
 
-@vectorStoreRouter.post(path="/document")
-async def post(doc: DocReq) -> None:
-    vector_store.add_documents(
+@documentRouter.post(path="/document")
+async def post(
+    doc: DocReq, service: DocumentService = Depends(dependency=DocumentService)
+) -> None:
+    service.add_documents(
         documents=[
             Document(
                 page_content=doc.content,
@@ -31,9 +33,11 @@ async def post(doc: DocReq) -> None:
     )
 
 
-@vectorStoreRouter.post(path="/document/bulk")
-async def bulk(docs: List[DocReq]) -> None:
-    vector_store.add_documents(
+@documentRouter.post(path="/document/bulk")
+async def bulk(
+    docs: List[DocReq], service: DocumentService = Depends(dependency=DocumentService)
+) -> None:
+    service.add_documents(
         documents=[
             Document(
                 page_content=doc.content,
@@ -44,9 +48,11 @@ async def bulk(docs: List[DocReq]) -> None:
     )
 
 
-@vectorStoreRouter.get(path="/document")
-async def index(query: str) -> List[DocRes]:
-    results: List[Document] = vector_store.similarity_search(query=query)
+@documentRouter.get(path="/document")
+async def index(
+    query: str, service: DocumentService = Depends(dependency=DocumentService)
+) -> List[DocRes]:
+    results: List[Document] = service.similarity_search(query=query)
     return [
         DocRes(page_content=doc.page_content, metadata=doc.metadata) for doc in results
     ]
