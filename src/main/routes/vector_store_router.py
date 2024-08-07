@@ -6,20 +6,32 @@ from src.main.persistence.milvus import vector_store
 
 
 class Item(BaseModel):
-    text: str
+    source: str
+    title: str
+    content: str
 
 
 vectorStoreRouter = APIRouter()
 
 
 @vectorStoreRouter.post(path="/vector")
-async def read_root(item: Item) -> dict[str, str]:
-    vector_store.add_texts(texts=[item.text])
-    return {"text": item.text}
+async def read_root(item: Item) -> None:
+    vector_store.add_documents(
+        documents=[
+            Document(
+                page_content=item.content,
+                metadata={"source": item.source, "title": item.title},
+            )
+        ]
+    )
 
 
 @vectorStoreRouter.get(path="/vector")
-async def read_root(query: str) -> dict[str, str]:
+async def read_root(query: str):
     results: List[Document] = vector_store.similarity_search(query=query)
-    print(results)
-    return {"results": results[0].page_content}
+    return {
+        "results": [
+            {"page_content": doc.page_content, "metadata": doc.metadata}
+            for doc in results
+        ]
+    }
